@@ -5,18 +5,28 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  ClassificationHistory,
+  ClassificationResult,
+  ClassificationStats,
+  ClassifyFoodBody,
+  ErrorResponse,
+  HealthStatus,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -92,6 +102,252 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Upload an image to classify as pizza, steak, or sushi
+ * @summary Classify food image
+ */
+export const getClassifyFoodUrl = () => {
+  return `/api/classify`;
+};
+
+export const classifyFood = async (
+  classifyFoodBody: ClassifyFoodBody,
+  options?: RequestInit,
+): Promise<ClassificationResult> => {
+  const formData = new FormData();
+  formData.append(`image`, classifyFoodBody.image);
+
+  return customFetch<ClassificationResult>(getClassifyFoodUrl(), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getClassifyFoodMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof classifyFood>>,
+    TError,
+    { data: BodyType<ClassifyFoodBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof classifyFood>>,
+  TError,
+  { data: BodyType<ClassifyFoodBody> },
+  TContext
+> => {
+  const mutationKey = ["classifyFood"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof classifyFood>>,
+    { data: BodyType<ClassifyFoodBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return classifyFood(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ClassifyFoodMutationResult = NonNullable<
+  Awaited<ReturnType<typeof classifyFood>>
+>;
+export type ClassifyFoodMutationBody = BodyType<ClassifyFoodBody>;
+export type ClassifyFoodMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Classify food image
+ */
+export const useClassifyFood = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof classifyFood>>,
+    TError,
+    { data: BodyType<ClassifyFoodBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof classifyFood>>,
+  TError,
+  { data: BodyType<ClassifyFoodBody> },
+  TContext
+> => {
+  return useMutation(getClassifyFoodMutationOptions(options));
+};
+
+/**
+ * Returns the most recent 20 classification results
+ * @summary Get recent classification history
+ */
+export const getGetClassificationHistoryUrl = () => {
+  return `/api/classify/history`;
+};
+
+export const getClassificationHistory = async (
+  options?: RequestInit,
+): Promise<ClassificationHistory[]> => {
+  return customFetch<ClassificationHistory[]>(
+    getGetClassificationHistoryUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetClassificationHistoryQueryKey = () => {
+  return [`/api/classify/history`] as const;
+};
+
+export const getGetClassificationHistoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getClassificationHistory>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getClassificationHistory>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetClassificationHistoryQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getClassificationHistory>>
+  > = ({ signal }) => getClassificationHistory({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getClassificationHistory>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetClassificationHistoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getClassificationHistory>>
+>;
+export type GetClassificationHistoryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get recent classification history
+ */
+
+export function useGetClassificationHistory<
+  TData = Awaited<ReturnType<typeof getClassificationHistory>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getClassificationHistory>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetClassificationHistoryQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns aggregated statistics about all classifications
+ * @summary Get classification statistics
+ */
+export const getGetClassificationStatsUrl = () => {
+  return `/api/classify/stats`;
+};
+
+export const getClassificationStats = async (
+  options?: RequestInit,
+): Promise<ClassificationStats> => {
+  return customFetch<ClassificationStats>(getGetClassificationStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetClassificationStatsQueryKey = () => {
+  return [`/api/classify/stats`] as const;
+};
+
+export const getGetClassificationStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getClassificationStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getClassificationStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetClassificationStatsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getClassificationStats>>
+  > = ({ signal }) => getClassificationStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getClassificationStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetClassificationStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getClassificationStats>>
+>;
+export type GetClassificationStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get classification statistics
+ */
+
+export function useGetClassificationStats<
+  TData = Awaited<ReturnType<typeof getClassificationStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getClassificationStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetClassificationStatsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

@@ -8,3 +8,38 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface ClassificationPrediction {
+  label: string;
+  confidence: number;
+}
+
+export interface ClassificationResult {
+  predicted_class: string;
+  confidence: number;
+  all_predictions: ClassificationPrediction[];
+  processing_time_ms: number;
+}
+
+export interface ClassificationHistory {
+  id: number;
+  predicted_class: string;
+  confidence: number;
+  created_at: string;
+}
+
+export interface ClassificationStats {
+  total_classifications: number;
+  pizza_count: number;
+  steak_count: number;
+  sushi_count: number;
+  avg_confidence: number;
+}
+
+export interface ErrorResponse {
+  error: string;
+}
+
+export type ClassifyFoodBody = {
+  image: Blob;
+};

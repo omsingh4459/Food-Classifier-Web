@@ -1,6 +1,5 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
   description: API specification
@@ -10,6 +9,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: classify
+    description: Food classification operations
 paths:
   /healthz:
     get:
@@ -24,6 +25,71 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /classify:
+    post:
+      operationId: classifyFood
+      tags: [classify]
+      summary: Classify food image
+      description: Upload an image to classify as pizza, steak, or sushi
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+              required:
+                - image
+      responses:
+        "200":
+          description: Classification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassificationResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /classify/history:
+    get:
+      operationId: getClassificationHistory
+      tags: [classify]
+      summary: Get recent classification history
+      description: Returns the most recent 20 classification results
+      responses:
+        "200":
+          description: List of recent classifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClassificationHistory"
+  /classify/stats:
+    get:
+      operationId: getClassificationStats
+      tags: [classify]
+      summary: Get classification statistics
+      description: Returns aggregated statistics about all classifications
+      responses:
+        "200":
+          description: Classification stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassificationStats"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +99,74 @@ components:
           type: string
       required:
         - status
-
+    ClassificationPrediction:
+      type: object
+      properties:
+        label:
+          type: string
+        confidence:
+          type: number
+      required:
+        - label
+        - confidence
+    ClassificationResult:
+      type: object
+      properties:
+        predicted_class:
+          type: string
+        confidence:
+          type: number
+        all_predictions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClassificationPrediction"
+        processing_time_ms:
+          type: number
+      required:
+        - predicted_class
+        - confidence
+        - all_predictions
+        - processing_time_ms
+    ClassificationHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+        predicted_class:
+          type: string
+        confidence:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - predicted_class
+        - confidence
+        - created_at
+    ClassificationStats:
+      type: object
+      properties:
+        total_classifications:
+          type: integer
+        pizza_count:
+          type: integer
+        steak_count:
+          type: integer
+        sushi_count:
+          type: integer
+        avg_confidence:
+          type: number
+      required:
+        - total_classifications
+        - pizza_count
+        - steak_count
+        - sushi_count
+        - avg_confidence
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error

@@ -6,4 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./classificationHistory";
+export * from "./classificationPrediction";
+export * from "./classificationResult";
+export * from "./classificationStats";
+export * from "./classifyFoodBody";
+export * from "./errorResponse";
 export * from "./healthStatus";

@@ -14,3 +14,49 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Upload an image to classify as pizza, steak, or sushi
+ * @summary Classify food image
+ */
+export const ClassifyFoodBody = zod.object({
+  image: zod.instanceof(File),
+});
+
+export const ClassifyFoodResponse = zod.object({
+  predicted_class: zod.string(),
+  confidence: zod.number(),
+  all_predictions: zod.array(
+    zod.object({
+      label: zod.string(),
+      confidence: zod.number(),
+    }),
+  ),
+  processing_time_ms: zod.number(),
+});
+
+/**
+ * Returns the most recent 20 classification results
+ * @summary Get recent classification history
+ */
+export const GetClassificationHistoryResponseItem = zod.object({
+  id: zod.number(),
+  predicted_class: zod.string(),
+  confidence: zod.number(),
+  created_at: zod.coerce.date(),
+});
+export const GetClassificationHistoryResponse = zod.array(
+  GetClassificationHistoryResponseItem,
+);
+
+/**
+ * Returns aggregated statistics about all classifications
+ * @summary Get classification statistics
+ */
+export const GetClassificationStatsResponse = zod.object({
+  total_classifications: zod.number(),
+  pizza_count: zod.number(),
+  steak_count: zod.number(),
+  sushi_count: zod.number(),
+  avg_confidence: zod.number(),
+});

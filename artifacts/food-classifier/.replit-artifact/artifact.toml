@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Food Classifier"
+version = "1.0.0"
+id = "artifacts/food-classifier"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22012
+
+[services.development]
+run = "pnpm --filter @workspace/food-classifier run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/food-classifier", "run", "build" ]
+publicDir = "artifacts/food-classifier/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22012"
+BASE_PATH = "/"
