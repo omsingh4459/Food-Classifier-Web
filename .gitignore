@@ -47,3 +47,23 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Python / ML
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pythonlibs/
+.venv/
+*.egg-info/
+.uv/
+uv.lock
+
+# ML model weights (large files — upload separately or use Git LFS)
+*.pth
+*.pt
+*.ckpt
+*.bin
+
+# Jupyter
+.ipynb_checkpoints/

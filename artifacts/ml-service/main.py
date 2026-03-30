@@ -1,3 +1,22 @@
+"""
+Food Classification ML Service
+================================
+This service runs a Vision Transformer (ViT-B/16) model to classify
+food images as pizza, steak, or sushi.
+
+HOW TO SWAP IN YOUR TRAINED MODEL:
+-----------------------------------
+1. Copy your trained model weights file (e.g. vit_food_classifier.pth)
+   into this directory: artifacts/ml-service/
+2. Set the environment variable MODEL_PATH to the filename:
+      export MODEL_PATH=vit_food_classifier.pth
+   Or just hardcode the path in the MODEL_PATH variable below.
+3. Restart the ML Service workflow.
+
+Your model must have the same ViT-B/16 architecture with a 3-class head.
+The class order must be: ["pizza", "steak", "sushi"]
+"""
+
 import io
 import time
 import os
@@ -7,9 +26,8 @@ from PIL import Image
 import torch
 import torchvision.transforms as transforms
 from torchvision.models import vit_b_16, ViT_B_16_Weights
-import json
 
-app = FastAPI()
+app = FastAPI(title="Food Classification Service")
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,32 +37,67 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Class names — must match the order your model was trained with
 CLASS_NAMES = ["pizza", "steak", "sushi"]
 
-print("[INFO] Loading ViT model...")
-weights = ViT_B_16_Weights.DEFAULT
-pretrained_transforms = weights.transforms()
+# ---------------------------------------------------------------
+# MODEL LOADING
+# ---------------------------------------------------------------
+# To use your own trained weights, set MODEL_PATH to the .pth file path.
+# Example: MODEL_PATH = "vit_food_classifier.pth"
+#
+# Leave as None to use torchvision pretrained weights (default demo mode).
+MODEL_PATH = os.environ.get("MODEL_PATH", None)
 
-model = vit_b_16(weights=weights)
+print("[INFO] Building ViT-B/16 model architecture...")
 
-num_classes = 3
+model = vit_b_16(weights=None if MODEL_PATH else ViT_B_16_Weights.DEFAULT)
+
+# Replace the classification head with a 3-class head
+# (This matches the architecture from your GitHub project)
 in_features = model.heads.head.in_features
-model.heads.head = torch.nn.Linear(in_features, num_classes)
+model.heads.head = torch.nn.Linear(in_features, len(CLASS_NAMES))
+
+if MODEL_PATH:
+    # Load your custom trained weights
+    model_file = os.path.join(os.path.dirname(__file__), MODEL_PATH)
+    if not os.path.exists(model_file):
+        raise RuntimeError(
+            f"Model file not found: {model_file}\n"
+            "Please place your .pth file in artifacts/ml-service/ "
+            "and set MODEL_PATH accordingly."
+        )
+    print(f"[INFO] Loading trained weights from: {model_file}")
+    state_dict = torch.load(model_file, map_location="cpu")
+    # Handle if saved as full model or just state_dict
+    if isinstance(state_dict, dict) and "model_state_dict" in state_dict:
+        state_dict = state_dict["model_state_dict"]
+    model.load_state_dict(state_dict)
+    print("[INFO] Custom model weights loaded successfully!")
+else:
+    print("[INFO] No MODEL_PATH set — using ImageNet pretrained weights (demo mode)")
+    print("[INFO] Set MODEL_PATH env var to your .pth file to use your trained model")
 
 model.eval()
 
+# Image preprocessing (matches ViT-B/16 training requirements)
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-print("[INFO] Model loaded successfully!")
+print("[INFO] ML Service ready!")
 
 
 @app.get("/")
 def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "model": "ViT-B/16",
+        "classes": CLASS_NAMES,
+        "using_custom_weights": MODEL_PATH is not None,
+    }
 
 
 @app.post("/classify")
@@ -66,8 +119,7 @@ async def classify_image(image: UploadFile = File(...)):
         logits = model(img_tensor)
         probs = torch.softmax(logits, dim=1)[0]
 
-    end_time = time.time()
-    processing_time_ms = (end_time - start_time) * 1000
+    processing_time_ms = (time.time() - start_time) * 1000
 
     predicted_idx = int(probs.argmax().item())
     predicted_class = CLASS_NAMES[predicted_idx]
