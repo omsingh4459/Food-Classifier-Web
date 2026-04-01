@@ -60,7 +60,7 @@ __pycache__/
 uv.lock
 
 # ML model weights (large files — upload separately or use Git LFS)
-*.pth
+
 *.pt
 *.ckpt
 *.bin
